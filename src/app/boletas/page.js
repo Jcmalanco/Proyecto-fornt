@@ -5,6 +5,8 @@ import { getBoletas } from '@/app/utils/api/getBoletas';
 import { getMe } from '@/app/utils/api/getMe';
 import AuthGuard from '@/components/AuthGuard';
 import StatusBox from '@/components/StatusBox';
+import { useRouter } from 'next/navigation';
+
 
 /*CÁLCULO DE PAGOS (FRONTEND)= */
 function generarPagos(boleta) {
@@ -42,6 +44,7 @@ function generarPagos(boleta) {
 }
 
 export default function BoletasPage() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [boletas, setBoletas] = useState([]);
   const [boletaActiva, setBoletaActiva] = useState(null);
@@ -169,21 +172,21 @@ export default function BoletasPage() {
                   <li><strong>Saldo pendiente:</strong> ${boletaActiva.saldo_pendiente}</li>
                 </ul>
               </section>
-              <div className="flex gap-4 pt-4">
-                <button
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  onClick={() => alert('Refrendo')}
-                >
-                  Refrendar
-                </button>
+                <div className="flex gap-4 pt-4">
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => router.push('/pago/nuevo')}
+                  >
+                    Refrendar
+                  </button>
 
-                <button
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                  onClick={() => alert('Liquidar')}
-                >
-                  Liquidar
-                </button>
-              </div>
+                  <button
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    onClick={() => router.push('/pago/nuevo')}
+                  >
+                    Liquidar
+                  </button>
+                </div>
             </section>
           )}
         </main>

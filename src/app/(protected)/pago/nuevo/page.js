@@ -3,21 +3,29 @@
 import { useEffect, useState } from 'react';
 import { getBoletas } from '@/app/utils/api/getBoletas';
 import { getUser } from '@/lib/auth';
+import { API } from '@/config';
 
-export default function BoletasPage() {
+export default function PagosPage() {
+
   const [boletas, setBoletas] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [monto, setMonto] = useState('');
   const [loading, setLoading] = useState(true);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [mensaje, setMensaje] = useState('');
 
   useEffect(() => {
     async function loadBoletas() {
       try {
-        const user = getUser(); // desde el token
+        const user = getUser();
         if (!user?.id) return;
 
         const data = await getBoletas(user.id);
         setBoletas(data);
-        if (data.length > 0) setSelected(data[0]);
+
+        if (data.length > 0) {
+          setSelected(data[0]); // selecciona automáticamente la primera
+        }
       } catch (err) {
         console.error('Error cargando boletas', err);
       } finally {
@@ -28,52 +36,117 @@ export default function BoletasPage() {
     loadBoletas();
   }, []);
 
+  async function crearPago() {
+    try {
+
+      if (!selected) {
+        setMensaje("Selecciona una boleta");
+        return;
+      }
+
+      const res = await fetch(`${API}/pagos/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          boleta_id: selected.id,   // ← ID automático de la boleta seleccionada
+          monto: Number(monto)
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setMensaje(data.error);
+        return;
+      }
+
+      setClientSecret(data.clientSecret);
+      setMensaje("PaymentIntent creado correctamente");
+
+    } catch (err) {
+      console.error('Error creando pago', err);
+      setMensaje("Error conectando con el servidor");
+    }
+  }
+
   if (loading) {
     return <p className="p-6">Cargando boletas...</p>;
   }
 
   return (
     <div className="flex h-screen">
-      {/* Menú lateral */}
-      <aside className="w-64 border-r bg-gray-100 overflow-y-auto">
-        <h2 className="p-4 font-semibold">Mis boletas</h2>
 
-        <ul>
-          {boletas.map((boleta) => (
-            <li
-              key={boleta.id}
-              onClick={() => setSelected(boleta)}
-              className={`p-3 cursor-pointer border-b hover:bg-gray-200 ${
-                selected?.id === boleta.id ? 'bg-gray-300' : ''
-              }`}
-            >
-              <div className="text-sm font-medium">
-                {boleta.folio ?? `Boleta #${boleta.id}`}
-              </div>
-              <div className="text-xs text-gray-600">
-                {boleta.fecha}
-              </div>
-            </li>
-          ))}
-        </ul>
+      {/* MENU LATERAL */}
+      <aside className="w-64 border-r bg-gray-600 p-4">
+        <h2 className="font-bold mb-4 text-white">Mis Boletas</h2>
+
+        {boletas.map((b) => (
+          <div
+            key={b.id}
+            onClick={() => setSelected(b)}
+            className={`p-3 mb-2 cursor-pointer rounded ${
+              selected?.id === b.id ? 'bg-blue-500' : 'bg-gray-400'
+            }`}
+          >
+            <p className="font-semibold">{b.descripcion}</p>
+            <p className="text-sm">Saldo: ${b.saldo_pendiente}</p>
+          </div>
+        ))}
       </aside>
 
-      {/* Contenido */}
-      <main className="flex-1 p-6">
-        {selected ? (
+      {/* CONTENIDO */}
+      <main className="flex-1 p-10">
+
+        {selected && (
           <>
-            <h1 className="text-xl font-semibold mb-4">
-              Detalle de boleta
+            <h1 className="text-2xl font-bold mb-6">
+              Pago de Boleta
             </h1>
 
-            <pre className="bg-gray-100 p-4 rounded">
-              {JSON.stringify(selected, null, 2)}
-            </pre>
+            <div className="mb-6">
+              <p><b>ID Boleta:</b> {selected.id}</p>
+              <p><b>Artículo:</b> {selected.descripcion}</p>
+              <p><b>Categoría:</b> {selected.categoria}</p>
+              <p><b>Saldo pendiente:</b> ${selected.saldo_pendiente}</p>
+            </div>
+
+            <div className="mb-4">
+              <input
+                type="number"
+                placeholder="Monto a pagar"
+                value={monto}
+                onChange={(e) => setMonto(e.target.value)}
+                className="border p-2 rounded w-60"
+              />
+            </div>
+
+            <button
+              onClick={crearPago}
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+            >
+              Generar Pago
+            </button>
+
+            {clientSecret && (
+              <div className="mt-6">
+                <p className="text-green-600">
+                  PaymentIntent creado correctamente
+                </p>
+              </div>
+            )}
+
+            {mensaje && (
+              <p className="mt-4 text-gray-700">
+                {mensaje}
+              </p>
+            )}
           </>
-        ) : (
-          <p>No hay boletas para mostrar</p>
         )}
+
       </main>
+
     </div>
   );
 }
